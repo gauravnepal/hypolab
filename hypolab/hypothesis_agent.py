@@ -1,10 +1,11 @@
-"""LLM-powered hypothesis generation with Groq + local fallback."""
+"""LLM-powered hypothesis generation with Groq + Ollama + smart data-driven fallback."""
 
 import json
-import os
 import re
 import warnings
 from typing import Dict, List, Optional
+
+import requests
 
 from .config import HypoLabConfig
 
@@ -23,26 +24,29 @@ Each hypothesis must include:
 Respond ONLY as a JSON array. No markdown, no explanations outside JSON."""
 
     def __init__(self, config: Optional[HypoLabConfig] = None):
+        """Initialize with chosen backend."""
         self.config = config or HypoLabConfig()
         self.client = None
         self.local_pipeline = None
         self._init_client()
 
     def _init_client(self) -> None:
-        """Initialize Groq client or local model."""
-        if self.config.has_groq() and not self.config.use_local_model:
+        """Initialize Groq, Ollama, or local HF model."""
+        if self.config.has_groq() and not self.config.use_ollama and not self.config.use_local_model:
             try:
                 from groq import Groq
                 self.client = Groq(api_key=self.config.groq_api_key)
             except ImportError:
-                warnings.warn("groq not installed; falling back to local model.")
-                self.config.use_local_model = True
-
-        if self.config.use_local_model or not self.config.has_groq():
+                warnings.warn("groq not installed; trying Ollama or local fallback.")
+        
+        if self.config.use_ollama and not self.config.has_groq():
+            # Ollama doesn't need init — just HTTP calls
+            pass
+        elif self.config.use_local_model:
             self._init_local_model()
 
     def _init_local_model(self) -> None:
-        """Load a local Hugging Face model (Phi-3-mini or similar)."""
+        """Load a local Hugging Face model."""
         try:
             import torch
             from transformers import AutoModelForCausalLM, AutoTokenizer, pipeline
@@ -63,23 +67,28 @@ Respond ONLY as a JSON array. No markdown, no explanations outside JSON."""
                 return_full_text=False,
             )
         except Exception as e:
-            warnings.warn(f"Local model initialization failed: {e}. Hypothesis generation will be mocked.")
-            self.local_pipeline = None
+            warnings.warn(f"Local model init failed: {e}")
 
     def generate(self, profile_json: str) -> List[Dict]:
-        """Generate hypotheses from a data profile."""
-        prompt = self._build_prompt(profile_json)
-        
-        if self.client and not self.config.use_local_model:
-            raw = self._call_groq(prompt)
+        """Generate hypotheses using best available backend."""
+        if self.client and self.config.has_groq():
+            return self._generate_with_llm(profile_json, self._call_groq)
+        elif self.config.use_ollama:
+            return self._generate_with_llm(profile_json, self._call_ollama)
         elif self.local_pipeline:
-            raw = self._call_local(prompt)
+            return self._generate_with_llm(profile_json, self._call_local)
         else:
-            raw = self._mock_response(profile_json)
-        
+            # Smart data-driven analysis — no LLM needed
+            return self._smart_data_driven(profile_json)
+
+    def _generate_with_llm(self, profile_json: str, caller) -> List[Dict]:
+        """Generic LLM generation with prompt building."""
+        prompt = self._build_prompt(profile_json)
+        raw = caller(prompt)
         return self._parse_response(raw)
 
     def _build_prompt(self, profile_json: str) -> str:
+        """Build prompt for LLM."""
         return f"{self.SYSTEM_PROMPT}\n\nDataset Profile:\n{profile_json}\n\nHypotheses:"
 
     def _call_groq(self, prompt: str) -> str:
@@ -96,101 +105,139 @@ Respond ONLY as a JSON array. No markdown, no explanations outside JSON."""
             )
             return chat_completion.choices[0].message.content
         except Exception as e:
-            warnings.warn(f"Groq API call failed: {e}. Trying fallback model.")
-            try:
-                chat_completion = self.client.chat.completions.create(
-                    messages=[
-                        {"role": "system", "content": self.SYSTEM_PROMPT},
-                        {"role": "user", "content": prompt},
-                    ],
-                    model=self.config.groq_fallback_model,
-                    temperature=0.3,
-                    max_tokens=2048,
-                )
-                return chat_completion.choices[0].message.content
-            except Exception as e2:
-                warnings.warn(f"Groq fallback failed: {e2}. Using local/mock.")
-                if self.local_pipeline:
-                    return self._call_local(prompt)
-                return self._mock_response(prompt)
+            warnings.warn(f"Groq failed: {e}")
+            return self._call_ollama(prompt)
+
+    def _call_ollama(self, prompt: str) -> str:
+        """Call local Ollama API."""
+        try:
+            response = requests.post(
+                self.config.ollama_url,
+                json={
+                    "model": self.config.ollama_model,
+                    "prompt": f"{self.SYSTEM_PROMPT}\n\n{prompt}",
+                    "stream": False,
+                    "options": {"temperature": 0.3},
+                },
+                timeout=60,
+            )
+            response.raise_for_status()
+            return response.json().get("response", "")
+        except Exception as e:
+            warnings.warn(f"Ollama failed: {e}. Using smart data-driven fallback.")
+            return ""
 
     def _call_local(self, prompt: str) -> str:
         """Call local Hugging Face model."""
         if self.local_pipeline is None:
-            return self._mock_response(prompt)
+            return ""
         try:
             result = self.local_pipeline(prompt, do_sample=True, temperature=0.3)
             return result[0]["generated_text"]
         except Exception as e:
-            warnings.warn(f"Local model inference failed: {e}")
-            return self._mock_response(prompt)
+            warnings.warn(f"Local model failed: {e}")
+            return ""
 
-    def _mock_response(self, profile_json: str) -> str:
-        """Graceful degradation: return template hypotheses when no LLM is available."""
-        # Parse the profile JSON to extract actual column names
+    def _smart_data_driven(self, profile_json: str) -> List[Dict]:
+        """
+        Generate intelligent hypotheses by analyzing the actual data profile.
+        No LLM needed — uses correlation strength, column types, and distributions.
+        """
         try:
             profile = json.loads(profile_json)
         except json.JSONDecodeError:
             profile = {}
-        
-        # Extract numeric columns from profile["numeric"] keys
-        numeric = list(profile.get("numeric", {}).keys())
-        # Extract categorical columns from profile["categorical"] keys
-        cat = list(profile.get("categorical", {}).keys())
-        # Fallback: try to parse from schema_summary
-        if not numeric and not cat:
-            summary = profile.get("schema_summary", "")
-            # Look for "Numeric columns (3): age, income, score"
-            num_match = re.search(r"Numeric columns?\s*\(\d+\):\s*([^\n]+)", summary)
-            if num_match:
-                numeric = [c.strip() for c in num_match.group(1).split(",") if c.strip()]
-            cat_match = re.search(r"Categorical columns?\s*\(\d+\):\s*([^\n]+)", summary)
-            if cat_match:
-                cat = [c.strip() for c in cat_match.group(1).split(",") if c.strip()]
-        
+
         hypotheses = []
-        if len(numeric) >= 2:
+        
+        # Extract columns from profile
+        numeric = list(profile.get("numeric", {}).keys())
+        cat = list(profile.get("categorical", {}).keys())
+        correlations = profile.get("correlations", [])
+        
+        # 1. Strongest correlation hypothesis
+        if correlations:
+            top = correlations[0]
+            r_val = abs(top.get("pearson_r", 0))
+            strength = "strong" if r_val > 0.5 else "moderate" if r_val > 0.3 else "weak"
             hypotheses.append({
-                "hypothesis": f"H0: {numeric[0]} and {numeric[1]} are uncorrelated; H1: significant Pearson correlation exists",
+                "hypothesis": f"H0: {top['col_a']} and {top['col_b']} are uncorrelated; H1: significant {strength} Pearson correlation exists",
                 "test_type": "pearson_correlation",
-                "variables": numeric[:2],
-                "rationale": f"Both {numeric[0]} and {numeric[1]} are numeric; correlation may reveal linear dependency."
+                "variables": [top["col_a"], top["col_b"]],
+                "rationale": f"Profile shows {strength} correlation (r={top['pearson_r']}) between {top['col_a']} and {top['col_b']}. Testing if this is statistically significant."
             })
-        if len(numeric) >= 1 and len(cat) >= 1:
+        
+        # 2. ANOVA: numeric vs categorical
+        if numeric and cat:
+            # Pick the numeric with highest variance (most interesting)
+            best_num = numeric[0]
+            num_stats = profile.get("numeric", {}).get(best_num, {})
+            std = num_stats.get("std", 0) if isinstance(num_stats, dict) else 0
             hypotheses.append({
-                "hypothesis": f"H0: Mean {numeric[0]} is equal across all groups of {cat[0]}; H1: at least one group differs",
+                "hypothesis": f"H0: Mean {best_num} is equal across all groups of {cat[0]}; H1: at least one group differs significantly",
                 "test_type": "anova",
-                "variables": [numeric[0], cat[0]],
-                "rationale": f"ANOVA tests whether {cat[0]} categories explain variance in {numeric[0]}."
+                "variables": [best_num, cat[0]],
+                "rationale": f"{best_num} has std={std:.1f} showing substantial variation; ANOVA tests if {cat[0]} explains this variance."
             })
-        if len(numeric) >= 2:
+        
+        # 3. Second correlation (if exists)
+        if len(correlations) > 1:
+            second = correlations[1]
             hypotheses.append({
-                "hypothesis": f"H0: {numeric[0]} does not Granger-cause {numeric[1]}; H1: predictive causality exists",
-                "test_type": "granger_causality",
-                "variables": numeric[:2],
-                "rationale": "If temporal ordering exists, Granger causality tests directional predictive influence."
+                "hypothesis": f"H0: {second['col_a']} and {second['col_b']} are uncorrelated; H1: significant association exists",
+                "test_type": "pearson_correlation",
+                "variables": [second["col_a"], second["col_b"]],
+                "rationale": f"Secondary correlation detected (r={second['pearson_r']}) — worth validating independently."
             })
+        
+        # 4. Regression: target prediction
+        if len(numeric) >= 2:
+            target = numeric[0]
+            predictors = numeric[1:3]  # Top 2 predictors
+            hypotheses.append({
+                "hypothesis": f"H0: {', '.join(predictors)} do not predict {target}; H1: significant predictive relationship exists",
+                "test_type": "regression",
+                "variables": [target] + predictors,
+                "rationale": f"Multiple regression tests combined predictive power of {', '.join(predictors)} on {target}."
+            })
+        
+        # 5. Chi-square for categorical
         if len(cat) >= 2:
             hypotheses.append({
-                "hypothesis": f"H0: {cat[0]} and {cat[1]} are independent; H1: association exists",
+                "hypothesis": f"H0: {cat[0]} and {cat[1]} are independent; H1: significant association exists",
                 "test_type": "chi_square",
                 "variables": cat[:2],
-                "rationale": "Chi-square test of independence for categorical association."
+                "rationale": f"Chi-square tests whether {cat[0]} and {cat[1]} exhibit categorical dependency."
             })
         
+        # 6. T-test if binary categorical exists
+        if len(numeric) >= 1 and len(cat) >= 1:
+            # Check if any categorical has only 2 unique values
+            cat_stats = profile.get("categorical", {}).get(cat[0], {})
+            unique = cat_stats.get("unique_count", 0) if isinstance(cat_stats, dict) else 0
+            if unique == 2:
+                hypotheses.append({
+                    "hypothesis": f"H0: Mean {numeric[0]} is equal between the two groups of {cat[0]}; H1: significant difference exists",
+                    "test_type": "t_test",
+                    "variables": [numeric[0], cat[0]],
+                    "rationale": f"{cat[0]} is binary — ideal for independent samples t-test on {numeric[0]}."
+                })
+        
         if not hypotheses:
-            all_cols = numeric + cat
             hypotheses = [{
                 "hypothesis": "H0: No significant pattern exists; H1: significant pattern detected",
                 "test_type": "regression",
-                "variables": all_cols[:2] if len(all_cols) >= 2 else all_cols,
-                "rationale": "Exploratory regression to identify predictive relationships."
+                "variables": numeric[:2] if len(numeric) >= 2 else numeric + cat,
+                "rationale": "Exploratory analysis to identify any significant relationships in the dataset."
             }]
         
-        return json.dumps(hypotheses)
+        return hypotheses
+
     def _parse_response(self, raw: str) -> List[Dict]:
         """Parse LLM response into structured hypotheses."""
-        # Clean markdown fences
+        if not raw or not raw.strip():
+            return []
+        
         cleaned = re.sub(r"```json?", "", raw)
         cleaned = re.sub(r"```", "", cleaned)
         cleaned = cleaned.strip()
@@ -201,8 +248,6 @@ Respond ONLY as a JSON array. No markdown, no explanations outside JSON."""
                 hypotheses = [hypotheses]
             return hypotheses
         except json.JSONDecodeError:
-            warnings.warn("Failed to parse LLM response as JSON. Returning empty list.")
-            # Try extracting JSON array via regex
             match = re.search(r"\[.*\]", cleaned, re.DOTALL)
             if match:
                 try:

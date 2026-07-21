@@ -43,13 +43,22 @@ def test_hypothesis_structure(sample_profile):
         assert "rationale" in h
 
 
-def test_mock_response_with_context():
-    """Mock should use column names from profile context."""
-    profile = json.dumps({"age": {"mean": 30}, "income": {"mean": 50000}})
+def test_smart_data_driven_finds_columns():
+    """Smart analysis should extract real column names from profile."""
+    profile = json.dumps({
+        "numeric": {"age": {"mean": 30}, "income": {"mean": 50000}},
+        "categorical": {"department": {"unique_count": 3}},
+        "correlations": [{"col_a": "age", "col_b": "income", "pearson_r": 0.45}],
+        "schema_summary": "Numeric columns: age, income\nCategorical columns: department"
+    })
     config = HypoLabConfig(groq_api_key="", use_local_model=False)
     agent = HypothesisAgent(config)
-    raw = agent._mock_response(profile)
-    assert "age" in raw or "income" in raw or "regression" in raw
+    hyps = agent.generate(profile)
+    
+    assert len(hyps) > 0
+    # Should use actual column names, not generic placeholders
+    all_vars = [v for h in hyps for v in h.get("variables", [])]
+    assert "age" in all_vars or "income" in all_vars
 
 
 def test_parse_valid_json():

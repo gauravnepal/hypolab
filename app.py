@@ -11,12 +11,13 @@ from hypolab.pipeline import HypoLabPipeline
 st.set_page_config(page_title="HypoLab", page_icon="🧪", layout="wide")
 
 st.title("🧪 HypoLab — Agentic Data Pipeline")
-st.markdown("Upload a CSV, let an LLM agent generate hypotheses, validate them statistically, and find supporting literature.")
+st.markdown("Upload a CSV, let an AI agent generate hypotheses, validate them statistically, and find supporting literature.")
 
 # Sidebar configuration
 st.sidebar.header("⚙️ Configuration")
-groq_key = st.sidebar.text_input("Groq API Key (optional)", type="password", help="Leave empty to use mock/local mode")
-use_local = st.sidebar.checkbox("Use Local Model (HF)", value=False, help="Requires transformers + GPU")
+groq_key = st.sidebar.text_input("Groq API Key (optional)", type="password", help="Leave empty to use Smart Analysis or Ollama")
+use_ollama = st.sidebar.checkbox("Use Ollama (Local LLM)", value=False, help="Requires Ollama running on localhost:11434")
+use_local = st.sidebar.checkbox("Use HuggingFace Local Model", value=False, help="Requires transformers + GPU (slow)")
 skip_lit = st.sidebar.checkbox("Skip Literature Search", value=False)
 alpha = st.sidebar.slider("Significance Level (α)", 0.01, 0.10, 0.05, 0.01)
 
@@ -24,10 +25,26 @@ st.sidebar.markdown("---")
 st.sidebar.info("""
 **Pipeline Steps:**
 1. 📊 Profile Dataset
-2. 🧠 LLM Hypothesis Generation
+2. 🧠 AI Hypothesis Generation
 3. 📈 Statistical Testing
 4. 📚 arXiv Literature Search
 """)
+
+# Mode indicator banner (right after sidebar, before file upload)
+config_preview = HypoLabConfig(
+    groq_api_key=groq_key if groq_key else None,
+    use_ollama=use_ollama,
+    use_local_model=use_local,
+)
+
+if config_preview.has_groq():
+    st.success("🟢 **LLM Mode:** Groq Llama 3.3 — Full AI hypothesis generation")
+elif use_ollama:
+    st.info("🟡 **Local LLM Mode:** Ollama — Running on your Mac (free & private)")
+elif use_local:
+    st.info("🟡 **Local HF Mode:** HuggingFace model — GPU required")
+else:
+    st.warning("🟠 **Smart Analysis Mode:** Data-driven hypotheses — No LLM needed, analyzes your actual data patterns")
 
 # Initialize session state for sample data
 if "sample_df" not in st.session_state:
@@ -56,6 +73,7 @@ if df is not None:
     if st.button("🚀 Run HypoLab Pipeline", type="primary"):
         config = HypoLabConfig(
             groq_api_key=groq_key if groq_key else None,
+            use_ollama=use_ollama,
             use_local_model=use_local,
             significance_level=alpha,
             verbose=False,
@@ -117,7 +135,7 @@ if df is not None:
                 if papers:
                     with st.expander(f"Papers for: {hyp_id[:60]}..."):
                         for p in papers:
-                            st.markdown(f"**[{p['title']}]({p['url']})**")
+                            st.markdown(f"**[{p.get('title', 'Untitled')}]({p.get('url', '')})**")
                             authors = p.get("authors", [])
                             author_str = ", ".join(authors[:3]) if authors else "Unknown"
                             st.caption(f"Authors: {author_str} | {p.get('published', 'N/A')}")
@@ -157,7 +175,7 @@ else:
             "department": np.random.choice(["Sales", "Engineering", "HR", "Marketing"], 200),
             "tenure_years": np.random.normal(5, 3, 200),
         })
-        # Add some correlation
+        # Add real correlation
         sample_df["income"] = sample_df["income"] + sample_df["tenure_years"] * 2000 + np.random.normal(0, 5000, 200)
         
         # Store in session state and rerun immediately
