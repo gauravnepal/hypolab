@@ -12,7 +12,7 @@ st.set_page_config(page_title="HypoLab", page_icon="🧪", layout="wide")
 
 st.title("🧪 HypoLab — Agentic Data Pipeline")
 st.markdown(
-    "Upload a CSV, let an AI agent generate hypotheses, validate them statistically, and find supporting literature."
+    "Upload a CSV or paste a URL, let an AI agent generate hypotheses, validate them statistically, and find supporting literature."
 )
 
 # Sidebar configuration
@@ -44,7 +44,7 @@ st.sidebar.info("""
 4. 📚 arXiv Literature Search
 """)
 
-# Mode indicator banner (right after sidebar, before file upload)
+# Mode indicator banner
 config_preview = HypoLabConfig(
     groq_api_key=groq_key if groq_key else None,
     use_ollama=use_ollama,
@@ -66,19 +66,54 @@ else:
 if "sample_df" not in st.session_state:
     st.session_state.sample_df = None
 
-# File upload
-uploaded_file = st.file_uploader("📁 Upload CSV Dataset", type=["csv"])
+# ============================================================
+# DATA LOADING: URL or File Upload or Sample Data
+# ============================================================
+st.subheader("📁 Load Data")
 
-# Use uploaded file OR sample data from session state
+col1, col2 = st.columns([2, 1])
+
+with col1:
+    csv_url = st.text_input(
+        "Paste a CSV URL",
+        placeholder="https://raw.githubusercontent.com/.../data.csv",
+        help="Direct link to a raw CSV file",
+    )
+
+with col2:
+    uploaded_file = st.file_uploader("Or upload CSV", type=["csv"])
+
 df = None
-if uploaded_file is not None:
-    df = pd.read_csv(uploaded_file)
-elif st.session_state.sample_df is not None:
-    df = st.session_state.sample_df
+load_error = None
 
+# Priority: URL > Uploaded File > Session State
+if csv_url:
+    try:
+        df = pd.read_csv(csv_url)
+        st.success(f"Loaded from URL: {df.shape[0]} rows × {df.shape[1]} columns")
+    except Exception as e:
+        # macOS SSL fallback: use requests without verification
+        if "CERTIFICATE_VERIFY_FAILED" in str(e) or "SSL" in str(e):
+            try:
+                import requests
+                from io import StringIO
+                import urllib3
+                
+                urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
+                response = requests.get(csv_url, verify=False, timeout=30)
+                response.raise_for_status()
+                df = pd.read_csv(StringIO(response.text))
+                st.success(f"Loaded from URL (SSL bypass): {df.shape[0]} rows × {df.shape[1]} columns")
+            except Exception as e2:
+                load_error = str(e2)
+                st.error(f"Could not load URL: {e2}")
+        else:
+            load_error = str(e)
+            st.error(f"Could not load URL: {e}")
+# ============================================================
+# PIPELINE EXECUTION
+# ============================================================
 if df is not None:
-    st.success(f"Loaded {df.shape[0]} rows × {df.shape[1]} columns")
-
     with st.expander("🔍 Preview Data"):
         st.dataframe(df.head(20), use_container_width=True)
 
@@ -205,12 +240,12 @@ if df is not None:
             )
 
 else:
-    st.info("👆 Upload a CSV file to get started.")
+    st.info("👆 Upload a CSV, paste a URL, or generate sample data to get started.")
 
     # Demo section
     st.markdown("---")
     st.subheader("🎮 Try with Sample Data")
-    if st.button("Generate Sample Dataset & Run"):
+    if st.button("Generate Sample Dataset"):
         import numpy as np
 
         np.random.seed(42)
