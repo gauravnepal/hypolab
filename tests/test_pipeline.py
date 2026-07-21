@@ -3,6 +3,7 @@
 import numpy as np
 import pandas as pd
 import pytest
+from unittest.mock import patch, Mock
 
 from hypolab.pipeline import HypoLabPipeline
 from hypolab.config import HypoLabConfig
@@ -73,11 +74,16 @@ def test_pipeline_with_target(sample_df):
     assert len(report["hypotheses"]) > 0
 
 
-def test_pipeline_literature_search(sample_df):
-    """Verify literature search runs when not skipped."""
-    config = HypoLabConfig(
-        groq_api_key="", use_local_model=False, verbose=False, arxiv_max_results=1
-    )
+def test_pipeline_literature_search_mocked(sample_df):
+    """Verify literature search integration without real HTTP calls."""
+    config = HypoLabConfig(groq_api_key="", use_local_model=False, verbose=False, arxiv_max_results=1)
     pipe = HypoLabPipeline(sample_df, config=config)
-    report = pipe.run(skip_literature=False)
-    assert "literature" in report
+    
+    with patch("hypolab.literature_search.requests.get") as mock_get:
+        mock_get.return_value = Mock(
+            text="<feed xmlns='http://www.w3.org/2005/Atom'><entry><title>Test</title><summary>S</summary><author><name>A</name></author><id>http://x</id><published>2024-01-01</published></entry></feed>",
+            raise_for_status=Mock(),
+        )
+        report = pipe.run(skip_literature=False)
+        assert "literature" in report
+        mock_get.assert_called()

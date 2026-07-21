@@ -1,10 +1,8 @@
 """Data profiling module — generates structured dataset summaries."""
 
 import json
-import warnings
 from typing import Any, Dict, List, Optional
 
-import numpy as np
 import pandas as pd
 
 

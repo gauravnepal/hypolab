@@ -1,6 +1,5 @@
 """Streamlit frontend for HypoLab."""
 
-import json
 
 import pandas as pd
 import streamlit as st
@@ -66,6 +65,7 @@ else:
 if "sample_df" not in st.session_state:
     st.session_state.sample_df = None
 
+
 # ============================================================
 # DATA LOADING: URL or File Upload or Sample Data
 # ============================================================
@@ -86,30 +86,45 @@ with col2:
 df = None
 load_error = None
 
+# DEBUG: Show what inputs we received (remove after testing)
+# st.write(f"DEBUG: csv_url='{csv_url}', uploaded_file={uploaded_file is not None}, sample_df={st.session_state.sample_df is not None}")
+
 # Priority: URL > Uploaded File > Session State
-if csv_url:
+if csv_url and csv_url.strip():
     try:
-        df = pd.read_csv(csv_url)
+        df = pd.read_csv(csv_url.strip())
         st.success(f"Loaded from URL: {df.shape[0]} rows × {df.shape[1]} columns")
     except Exception as e:
-        # macOS SSL fallback: use requests without verification
-        if "CERTIFICATE_VERIFY_FAILED" in str(e) or "SSL" in str(e):
+        # macOS SSL fallback
+        if "CERTIFICATE" in str(e).upper() or "SSL" in str(e).upper():
             try:
-                import requests
-                from io import StringIO
                 import urllib3
+                from io import StringIO
+                import requests
                 
-                urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
-                response = requests.get(csv_url, verify=False, timeout=30)
-                response.raise_for_status()
-                df = pd.read_csv(StringIO(response.text))
-                st.success(f"Loaded from URL (SSL bypass): {df.shape[0]} rows × {df.shape[1]} columns")
+                urllib3.disable_warnings()
+                r = requests.get(csv_url.strip(), verify=False, timeout=30)
+                r.raise_for_status()
+                df = pd.read_csv(StringIO(r.text))
+                st.success(f"Loaded from URL: {df.shape[0]} rows × {df.shape[1]} columns")
             except Exception as e2:
                 load_error = str(e2)
-                st.error(f"Could not load URL: {e2}")
+                st.error(f"URL failed: {e2}")
         else:
             load_error = str(e)
-            st.error(f"Could not load URL: {e}")
+            st.error(f"URL failed: {e}")
+
+elif uploaded_file is not None:
+    try:
+        df = pd.read_csv(uploaded_file)
+        st.success(f"Loaded from upload: {df.shape[0]} rows × {df.shape[1]} columns")
+    except Exception as e:
+        load_error = str(e)
+        st.error(f"Upload failed: {e}")
+
+elif st.session_state.sample_df is not None:
+    df = st.session_state.sample_df
+    st.success(f"Loaded sample data: {df.shape[0]} rows × {df.shape[1]} columns")
 # ============================================================
 # PIPELINE EXECUTION
 # ============================================================

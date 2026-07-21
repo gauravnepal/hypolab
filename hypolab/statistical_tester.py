@@ -1,9 +1,7 @@
 """Statistical hypothesis testing — Pearson, ANOVA, Granger, Chi-square, T-test."""
 
-import warnings
-from typing import Any, Dict, List, Optional
+from typing import Any, Dict, List
 
-import numpy as np
 import pandas as pd
 from scipy import stats
 
