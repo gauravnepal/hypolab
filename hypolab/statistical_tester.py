@@ -31,24 +31,28 @@ class StatisticalTester:
             test_type = hyp.get("test_type", "").lower().strip()
             variables = hyp.get("variables", [])
             if test_type not in self.VALID_TESTS:
-                self.results.append({
-                    "hypothesis": hyp.get("hypothesis", ""),
-                    "test_type": test_type,
-                    "status": "skipped",
-                    "reason": f"Unknown test type: {test_type}",
-                })
+                self.results.append(
+                    {
+                        "hypothesis": hyp.get("hypothesis", ""),
+                        "test_type": test_type,
+                        "status": "skipped",
+                        "reason": f"Unknown test type: {test_type}",
+                    }
+                )
                 continue
-            
+
             try:
                 result = self._dispatch(test_type, variables, hyp)
                 self.results.append(result)
             except Exception as e:
-                self.results.append({
-                    "hypothesis": hyp.get("hypothesis", ""),
-                    "test_type": test_type,
-                    "status": "error",
-                    "reason": str(e),
-                })
+                self.results.append(
+                    {
+                        "hypothesis": hyp.get("hypothesis", ""),
+                        "test_type": test_type,
+                        "status": "error",
+                        "reason": str(e),
+                    }
+                )
         return self.results
 
     def _dispatch(self, test_type: str, variables: List[str], hyp: Dict) -> Dict:
@@ -76,10 +80,10 @@ class StatisticalTester:
         y = self._clean_numeric(variables[1])
         min_len = min(len(x), len(y))
         x, y = x.iloc[:min_len], y.iloc[:min_len]
-        
+
         if min_len < 3:
             return {"status": "skipped", "reason": "Insufficient data after cleaning"}
-        
+
         r, pvalue = stats.pearsonr(x, y)
         return {
             "hypothesis": hyp.get("hypothesis", ""),
@@ -96,21 +100,24 @@ class StatisticalTester:
     def _anova(self, variables: List[str], hyp: Dict) -> Dict:
         """One-way ANOVA: numeric ~ categorical."""
         if len(variables) < 2:
-            return {"status": "skipped", "reason": "Need numeric + categorical variables"}
-        
+            return {
+                "status": "skipped",
+                "reason": "Need numeric + categorical variables",
+            }
+
         numeric_col = variables[0]
         cat_col = variables[1]
-        
+
         df_clean = self.df[[numeric_col, cat_col]].dropna()
         df_clean[numeric_col] = pd.to_numeric(df_clean[numeric_col], errors="coerce")
         df_clean = df_clean.dropna()
-        
+
         groups = [group[numeric_col].values for _, group in df_clean.groupby(cat_col)]
         groups = [g for g in groups if len(g) > 1]
-        
+
         if len(groups) < 2:
             return {"status": "skipped", "reason": "Need at least 2 groups with data"}
-        
+
         f_stat, pvalue = stats.f_oneway(*groups)
         return {
             "hypothesis": hyp.get("hypothesis", ""),
@@ -128,13 +135,13 @@ class StatisticalTester:
         """Chi-square test of independence."""
         if len(variables) < 2:
             return {"status": "skipped", "reason": "Need 2 categorical variables"}
-        
+
         df_clean = self.df[variables[:2]].dropna()
         contingency = pd.crosstab(df_clean[variables[0]], df_clean[variables[1]])
-        
+
         if contingency.size == 0:
             return {"status": "skipped", "reason": "Empty contingency table"}
-        
+
         chi2, pvalue, dof, expected = stats.chi2_contingency(contingency)
         return {
             "hypothesis": hyp.get("hypothesis", ""),
@@ -152,14 +159,14 @@ class StatisticalTester:
         """Independent two-sample t-test."""
         if len(variables) < 2:
             return {"status": "skipped", "reason": "Need 2 variables"}
-        
+
         numeric_col = variables[0]
         group_col = variables[1]
-        
+
         df_clean = self.df[[numeric_col, group_col]].dropna()
         df_clean[numeric_col] = pd.to_numeric(df_clean[numeric_col], errors="coerce")
         df_clean = df_clean.dropna()
-        
+
         unique_groups = df_clean[group_col].unique()
         if len(unique_groups) != 2:
             x = self._clean_numeric(variables[0])
@@ -177,10 +184,10 @@ class StatisticalTester:
                 "alpha": self.alpha,
                 "status": "completed",
             }
-        
+
         group_a = df_clean[df_clean[group_col] == unique_groups[0]][numeric_col]
         group_b = df_clean[df_clean[group_col] == unique_groups[1]][numeric_col]
-        
+
         t_stat, pvalue = stats.ttest_ind(group_a, group_b, equal_var=False)
         return {
             "hypothesis": hyp.get("hypothesis", ""),
@@ -199,21 +206,27 @@ class StatisticalTester:
             from statsmodels.tsa.stattools import grangercausalitytests
         except ImportError:
             return {"status": "skipped", "reason": "statsmodels not installed"}
-        
+
         if len(variables) < 2:
-            return {"status": "skipped", "reason": "Need 2 numeric time-series variables"}
-        
+            return {
+                "status": "skipped",
+                "reason": "Need 2 numeric time-series variables",
+            }
+
         df_clean = self.df[variables[:2]].apply(pd.to_numeric, errors="coerce").dropna()
         if len(df_clean) < 10:
             return {"status": "skipped", "reason": "Insufficient time-series data"}
-        
+
         maxlag = min(4, len(df_clean) // 5)
         try:
             gc_result = grangercausalitytests(df_clean, maxlag=maxlag, verbose=False)
-            pvalues = {lag: round(gc_result[lag][0]["ssr_ftest"][1], 6) for lag in range(1, maxlag + 1)}
+            pvalues = {
+                lag: round(gc_result[lag][0]["ssr_ftest"][1], 6)
+                for lag in range(1, maxlag + 1)
+            }
             min_p = min(pvalues.values())
             best_lag = min(pvalues, key=pvalues.get)
-            
+
             return {
                 "hypothesis": hyp.get("hypothesis", ""),
                 "test_type": "granger_causality",
@@ -234,23 +247,27 @@ class StatisticalTester:
             import statsmodels.api as sm
         except ImportError:
             return {"status": "skipped", "reason": "statsmodels not installed"}
-        
+
         if len(variables) < 2:
             return {"status": "skipped", "reason": "Need at least 2 variables"}
-        
+
         target = variables[0]
         predictors = variables[1:]
-        
-        df_clean = self.df[[target] + predictors].apply(pd.to_numeric, errors="coerce").dropna()
+
+        df_clean = (
+            self.df[[target] + predictors]
+            .apply(pd.to_numeric, errors="coerce")
+            .dropna()
+        )
         if len(df_clean) < 3:
             return {"status": "skipped", "reason": "Insufficient data"}
-        
+
         y = df_clean[target]
         X = df_clean[predictors]
         X = sm.add_constant(X)
-        
+
         model = sm.OLS(y, X).fit()
-        
+
         return {
             "hypothesis": hyp.get("hypothesis", ""),
             "test_type": "regression",

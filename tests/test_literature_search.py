@@ -76,7 +76,15 @@ def test_format_results_empty():
 def test_format_results_with_papers():
     """Verify papers are formatted into markdown."""
     ls = LiteratureSearch()
-    papers = [{"title": "T", "authors": ["A"], "published": "2024-01-01", "url": "http://x", "summary": "S"}]
+    papers = [
+        {
+            "title": "T",
+            "authors": ["A"],
+            "published": "2024-01-01",
+            "url": "http://x",
+            "summary": "S",
+        }
+    ]
     md = ls.format_results(papers)
     assert "T" in md
     assert "A" in md

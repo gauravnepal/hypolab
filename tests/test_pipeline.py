@@ -12,12 +12,14 @@ from hypolab.config import HypoLabConfig
 def sample_df():
     """Generate reproducible sample data."""
     np.random.seed(42)
-    return pd.DataFrame({
-        "age": np.random.normal(30, 10, 100),
-        "income": np.random.normal(50000, 15000, 100),
-        "score": np.random.normal(75, 15, 100),
-        "category": np.random.choice(["A", "B", "C"], 100),
-    })
+    return pd.DataFrame(
+        {
+            "age": np.random.normal(30, 10, 100),
+            "income": np.random.normal(50000, 15000, 100),
+            "score": np.random.normal(75, 15, 100),
+            "category": np.random.choice(["A", "B", "C"], 100),
+        }
+    )
 
 
 def test_pipeline_initialization(sample_df):
@@ -33,12 +35,12 @@ def test_pipeline_run(sample_df, capsys):
     config = HypoLabConfig(groq_api_key="", use_local_model=False, verbose=True)
     pipe = HypoLabPipeline(sample_df, config=config)
     report = pipe.run(skip_literature=True)
-    
+
     assert "profile_summary" in report
     assert "hypotheses" in report
     assert "test_results" in report
     assert "test_summary" in report
-    
+
     captured = capsys.readouterr()
     assert "Profiling" in captured.out or "Generating" in captured.out
 
@@ -73,7 +75,9 @@ def test_pipeline_with_target(sample_df):
 
 def test_pipeline_literature_search(sample_df):
     """Verify literature search runs when not skipped."""
-    config = HypoLabConfig(groq_api_key="", use_local_model=False, verbose=False, arxiv_max_results=1)
+    config = HypoLabConfig(
+        groq_api_key="", use_local_model=False, verbose=False, arxiv_max_results=1
+    )
     pipe = HypoLabPipeline(sample_df, config=config)
     report = pipe.run(skip_literature=False)
     assert "literature" in report

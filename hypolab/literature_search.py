@@ -51,7 +51,7 @@ class LiteratureSearch:
     def _parse_atom(self, xml_text: str) -> List[Dict]:
         """Parse arXiv Atom XML into structured dicts."""
         import xml.etree.ElementTree as ET
-        
+
         papers = []
         try:
             root = ET.fromstring(xml_text)
@@ -59,26 +59,30 @@ class LiteratureSearch:
             return papers
 
         ns = {"atom": "http://www.w3.org/2005/Atom"}
-        
+
         for entry in root.findall("atom:entry", ns):
             paper = {}
             title = entry.find("atom:title", ns)
-            paper["title"] = self._clean_text(title.text) if title is not None else "N/A"
-            
+            paper["title"] = (
+                self._clean_text(title.text) if title is not None else "N/A"
+            )
+
             summary = entry.find("atom:summary", ns)
-            paper["summary"] = self._clean_text(summary.text) if summary is not None else "N/A"
-            
+            paper["summary"] = (
+                self._clean_text(summary.text) if summary is not None else "N/A"
+            )
+
             authors = entry.findall("atom:author/atom:name", ns)
             paper["authors"] = [a.text for a in authors if a.text]
-            
+
             link = entry.find("atom:id", ns)
             paper["url"] = link.text if link is not None else ""
-            
+
             published = entry.find("atom:published", ns)
             paper["published"] = published.text[:10] if published is not None else ""
-            
+
             papers.append(paper)
-        
+
         return papers
 
     def _clean_text(self, text: Optional[str]) -> str:

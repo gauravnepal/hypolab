@@ -72,11 +72,13 @@ class DataProfiler:
         corr_pairs = []
         for i in range(len(corr.columns)):
             for j in range(i + 1, len(corr.columns)):
-                corr_pairs.append({
-                    "col_a": corr.columns[i],
-                    "col_b": corr.columns[j],
-                    "pearson_r": round(corr.iloc[i, j], 4),
-                })
+                corr_pairs.append(
+                    {
+                        "col_a": corr.columns[i],
+                        "col_b": corr.columns[j],
+                        "pearson_r": round(corr.iloc[i, j], 4),
+                    }
+                )
         corr_pairs.sort(key=lambda x: abs(x["pearson_r"]), reverse=True)
         self.profile["correlations"] = corr_pairs[:50]
 
@@ -86,21 +88,25 @@ class DataProfiler:
         for col in self.df.columns:
             missing = self.df[col].isna().sum()
             if missing > 0:
-                issues.append({
-                    "column": col,
-                    "issue": "missing_values",
-                    "count": int(missing),
-                    "pct": round(missing / len(self.df) * 100, 2),
-                })
+                issues.append(
+                    {
+                        "column": col,
+                        "issue": "missing_values",
+                        "count": int(missing),
+                        "pct": round(missing / len(self.df) * 100, 2),
+                    }
+                )
             if col in self.numeric_cols:
                 outliers = self._detect_outliers_iqr(col)
                 if outliers > 0:
-                    issues.append({
-                        "column": col,
-                        "issue": "outliers_iqr",
-                        "count": int(outliers),
-                        "pct": round(outliers / len(self.df) * 100, 2),
-                    })
+                    issues.append(
+                        {
+                            "column": col,
+                            "issue": "outliers_iqr",
+                            "count": int(outliers),
+                            "pct": round(outliers / len(self.df) * 100, 2),
+                        }
+                    )
         self.profile["issues"] = issues
 
     def _detect_outliers_iqr(self, col: str) -> int:

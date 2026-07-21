@@ -9,12 +9,14 @@ from hypolab.config import HypoLabConfig
 
 @pytest.fixture
 def sample_profile():
-    return json.dumps({
-        "schema_summary": "Dataset shape: 100 rows x 5 columns\nNumeric columns: age, income, score\nCategorical columns: category, region",
-        "correlations": [
-            {"col_a": "age", "col_b": "income", "pearson_r": 0.45},
-        ],
-    })
+    return json.dumps(
+        {
+            "schema_summary": "Dataset shape: 100 rows x 5 columns\nNumeric columns: age, income, score\nCategorical columns: category, region",
+            "correlations": [
+                {"col_a": "age", "col_b": "income", "pearson_r": 0.45},
+            ],
+        }
+    )
 
 
 def test_agent_initialization_mock():
@@ -45,16 +47,18 @@ def test_hypothesis_structure(sample_profile):
 
 def test_smart_data_driven_finds_columns():
     """Smart analysis should extract real column names from profile."""
-    profile = json.dumps({
-        "numeric": {"age": {"mean": 30}, "income": {"mean": 50000}},
-        "categorical": {"department": {"unique_count": 3}},
-        "correlations": [{"col_a": "age", "col_b": "income", "pearson_r": 0.45}],
-        "schema_summary": "Numeric columns: age, income\nCategorical columns: department"
-    })
+    profile = json.dumps(
+        {
+            "numeric": {"age": {"mean": 30}, "income": {"mean": 50000}},
+            "categorical": {"department": {"unique_count": 3}},
+            "correlations": [{"col_a": "age", "col_b": "income", "pearson_r": 0.45}],
+            "schema_summary": "Numeric columns: age, income\nCategorical columns: department",
+        }
+    )
     config = HypoLabConfig(groq_api_key="", use_local_model=False)
     agent = HypothesisAgent(config)
     hyps = agent.generate(profile)
-    
+
     assert len(hyps) > 0
     # Should use actual column names, not generic placeholders
     all_vars = [v for h in hyps for v in h.get("variables", [])]
