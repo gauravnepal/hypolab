@@ -82,7 +82,7 @@ The result is **explainable, falsifiable data analysis** — not AI guesswork.
                        │ LiteratureSearch│◄── arXiv API
                        │  (Evidence)     │
                        └─────────────────┘
----
+```
 
 # 🧠 AI Fallback Strategy
 
