@@ -1,86 +1,87 @@
-<!-- CI badge disabled until first workflow run -->
-<!-- [![CI](https://github.com/gauravnepal/hypolab/actions/workflows/ci.yml/badge.svg)](https://github.com/gauravnepal/hypolab/actions) -->
 # 🧪 HypoLab
 
-<p align="center">
+&lt;p align="center"&gt;
 
-### **LLM proposes. Math verifies.**
+**LLM proposes. Math verifies.**
 
-**An agentic AI pipeline that generates statistical hypotheses, validates them with rigorous statistical tests, and retrieves supporting scientific literature.**
+An agentic research assistant that combines LLM reasoning with statistical verification, ensuring every accepted insight is supported by evidence—not just AI confidence.
 
 *Because AI should generate ideas—not unquestionable conclusions.*
 
-</p>
+&lt;/p&gt;
+
+&lt;p align="center"&gt;
+
+![Python](https://img.shields.io/badge/python-3.9+-blue.svg)
+![Tests](https://img.shields.io/badge/tests-40%20passing-brightgreen)
+![License](https://img.shields.io/badge/license-MIT-green.svg)
+![Streamlit](https://img.shields.io/badge/demo-Streamlit-ff4b4b.svg)
+
+&lt;/p&gt;
 
 ---
 
-## ✨ Overview
+## 📑 Table of Contents
 
-HypoLab is an **Agentic Data Science Pipeline** that combines Large Language Models with classical statistics.
-
-Instead of trusting an LLM's interpretation of a dataset, HypoLab lets the AI generate **falsifiable hypotheses**, then automatically verifies each one using statistical testing before searching **arXiv** for relevant scientific papers.
-
-The result is an explainable research assistant that combines:
-
-- 🤖 AI reasoning
-- 📈 Statistical validation
-- 📚 Scientific evidence
+- [Why HypoLab Exists](#-why-hypolab-exists)
+- [Architecture](#-architecture)
+- [What It Actually Does](#-what-it-actually-does)
+- [The 3-Tier Intelligence Stack](#-the-3-tier-intelligence-stack)
+- [Quick Start](#-quick-start)
+  - [Installation](#-installation)
+  - [Running the App](#-running-the-app)
+- [Try It Yourself](#-try-it-yourself)
+- [The Ground Truth Benchmark](#-the-ground-truth-benchmark)
+- [Repository Structure](#-repository-structure)
+- [Technology Stack](#-technology-stack)
+- [Configuration](#%EF%B8%8F-configuration)
+- [Example Output](#-example-output)
+- [Testing](#-testing)
+- [Roadmap](#-roadmap)
+- [Contributing](#-contributing)
+- [License](#-license)
 
 ---
 
-## 🚀 Features
+# 🤔 Why HypoLab Exists
 
-- 🤖 LLM-generated hypotheses from any CSV dataset
-- 📊 Automatic statistical test selection
-- ✅ p-value verification
-- 📐 Effect size calculation
-- 📉 Correlation analysis
-- 📈 Linear regression
-- 🌍 ANOVA across categorical groups
-- 📚 arXiv literature retrieval
-- 🧠 Multi-agent pipeline
-- 🟢 Cloud LLM support (Groq)
-- 🟡 Local LLM support (Ollama)
-- 🟠 Zero-API fallback mode
-- 🎯 Ground-truth statistical testing
-- 🖥️ Interactive Streamlit interface
-- 🧪 Comprehensive pytest test suite
+Current AI data tools give you "insights" that sound convincing but can't be trusted. An LLM might claim *"sales correlate with temperature"* — but without a p-value, that's just hallucinated pattern-matching.
+
+**HypoLab fixes this with a verification loop:**
+
+1. **Propose** — An LLM agent (or data-driven fallback) suggests testable hypotheses
+2. **Verify** — Classical statistical tests (Pearson, ANOVA, Regression, etc.) validate or reject each claim with p-values
+3. **Support** — arXiv literature search provides academic context for findings that survive
+
+The result is **explainable, falsifiable data analysis** — not AI guesswork.
 
 ---
 
 # 🏗 Architecture
 
 ```text
-                 ┌──────────────┐
-                 │ CSV / Dataset│
-                 └──────┬───────┘
-                        │
-                        ▼
-                Data Profiler Agent
-                        │
-                        ▼
-             Schema & Dataset Summary
-                        │
-                        ▼
-               LLM Hypothesis Agent
-                        │
-          Generates Falsifiable Claims
-                        │
-                        ▼
-            Statistical Verification
-                        │
-          Pearson • ANOVA • Regression
-                        │
-                        ▼
-        p-values • Effect Sizes • R²
-                        │
-                        ▼
-             arXiv Literature Search
-                        │
-                        ▼
-          Verified Research Report
-```
-
+┌─────────────┐     ┌─────────────────┐     ┌──────────────────┐
+│   CSV/URL   │────▶│  DataProfiler   │────▶│  Schema Summary  │
+└─────────────┘     └─────────────────┘     └──────────────────┘
+                                                        │
+                              ┌─────────────────────────┘
+                              ▼
+                       ┌─────────────────┐
+                       │ HypothesisAgent │◄── Groq / Ollama / Smart Analysis
+                       │  (LLM Agent)    │
+                       └─────────────────┘
+                              │
+                              ▼
+                       ┌─────────────────┐
+                       │ StatisticalTester│◄── scipy / statsmodels
+                       │  (Verification)  │
+                       └─────────────────┘
+                              │
+                              ▼
+                       ┌─────────────────┐
+                       │ LiteratureSearch│◄── arXiv API
+                       │  (Evidence)     │
+                       └─────────────────┘
 ---
 
 # 🧠 AI Fallback Strategy
@@ -97,31 +98,45 @@ Even without an API key, HypoLab still performs meaningful statistical analysis.
 
 ---
 
-# 📂 Project Structure
+# 📂 Repository Structure
 
 ```text
 hypolab/
 │
-├── agents/
-│   ├── hypothesis_agent.py
-│   ├── profiler_agent.py
-│   └── literature_agent.py
+├── .github/
+│   └── workflows/              # GitHub Actions CI
 │
-├── statistics/
-│   ├── correlation.py
-│   ├── regression.py
-│   └── anova.py
+├── assets/                     # Images and demo assets
+├── docs/                       # Project documentation
+├── notebooks/                  # Jupyter notebooks
+├── references/                 # Research references
+│
+├── hypolab/                    # Main package
+│   ├── __init__.py
+│   ├── config.py
+│   ├── profiler.py
+│   ├── hypothesis_agent.py
+│   ├── statistical_tester.py
+│   ├── literature_search.py
+│   └── pipeline.py
 │
 ├── tests/
 │   ├── test_ground_truth.py
-│   ├── test_statistics.py
-│   └── ...
+│   ├── test_hypothesis_agent.py
+│   ├── test_literature_search.py
+│   ├── test_pipeline.py
+│   ├── test_profiler.py
+│   └── test_statistical_tester.py
 │
-├── app.py
+├── app.py                      # Streamlit application
+├── pyproject.toml              # Project metadata
 ├── requirements.txt
-├── setup.py
+├── LICENSE
 └── README.md
 ```
+
+---
+
 
 *(Update this section to match your actual directory structure.)*
 
@@ -170,17 +185,16 @@ pip install -e .
 ---
 
 # ▶ Running the App
+Run all tests.
+
+```bash
+pytest tests/ -v
+```
 
 Launch the Streamlit interface.
 
 ```bash
 streamlit run app.py
-```
-
-Run all tests.
-
-```bash
-pytest tests/ -v
 ```
 
 ---
