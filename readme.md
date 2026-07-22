@@ -1,23 +1,18 @@
 # 🧪 HypoLab
 
-&lt;p align="center"&gt;
-
 **LLM proposes. Math verifies.**
 
 An agentic research assistant that combines LLM reasoning with statistical verification, ensuring every accepted insight is supported by evidence—not just AI confidence.
 
 *Because AI should generate ideas—not unquestionable conclusions.*
 
-&lt;/p&gt;
-
-&lt;p align="center"&gt;
 
 ![Python](https://img.shields.io/badge/python-3.9+-blue.svg)
 ![Tests](https://img.shields.io/badge/tests-40%20passing-brightgreen)
 ![License](https://img.shields.io/badge/license-MIT-green.svg)
 ![Streamlit](https://img.shields.io/badge/demo-Streamlit-ff4b4b.svg)
 
-&lt;/p&gt;
+
 
 ---
 
@@ -135,10 +130,6 @@ hypolab/
 └── README.md
 ```
 
----
-
-
-*(Update this section to match your actual directory structure.)*
 
 ---
 
