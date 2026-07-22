@@ -44,9 +44,9 @@ Current AI data tools give you "insights" that sound convincing but can't be tru
 
 The result is **explainable, falsifiable data analysis** — not AI guesswork.
 
----
+###
 
-# 🏗 Architecture
+## 🏗 Architecture
 
 ```text
 ┌─────────────┐     ┌─────────────────┐     ┌──────────────────┐
@@ -72,7 +72,7 @@ The result is **explainable, falsifiable data analysis** — not AI guesswork.
                        │  (Evidence)     │
                        └─────────────────┘
 ```
-# ✨ What It Actually Does
+## ✨ What It Actually Does
 Table
 Stage	Implementation	Output
 Profile	Auto-detects numeric/categorical/datetime, correlations, outliers, missing data	Structured dataset summary
