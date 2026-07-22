@@ -21,17 +21,11 @@ An agentic research assistant that combines LLM reasoning with statistical verif
 - [Why HypoLab Exists](#-why-hypolab-exists)
 - [Architecture](#-architecture)
 - [What It Actually Does](#-what-it-actually-does)
-- [The 3-Tier Intelligence Stack](#-the-3-tier-intelligence-stack)
 - [Quick Start](#-quick-start)
-  - [Installation](#-installation)
-  - [Running the App](#-running-the-app)
-- [Try It Yourself](#-try-it-yourself)
-- [The Ground Truth Benchmark](#-the-ground-truth-benchmark)
+- [Live Demo](#-live-demo)
+- [How It Works](#-how-it-works)
 - [Repository Structure](#-repository-structure)
-- [Technology Stack](#-technology-stack)
-- [Configuration](#%EF%B8%8F-configuration)
-- [Example Output](#-example-output)
-- [Testing](#-testing)
+- [Tech Stack & Configuration](#-tech-stack--configuration)
 - [Roadmap](#-roadmap)
 - [Contributing](#-contributing)
 - [License](#-license)
@@ -78,22 +72,28 @@ The result is **explainable, falsifiable data analysis** — not AI guesswork.
                        │  (Evidence)     │
                        └─────────────────┘
 ```
-
-# 🧠 AI Fallback Strategy
-
-HypoLab automatically chooses the best available intelligence layer.
-
-| Priority | Engine | Description |
-|----------|---------|-------------|
-| 🟢 | Groq (Llama 3.3 70B) | Fast cloud inference |
-| 🟡 | Ollama (Llama 3.1 8B) | Local, private inference |
-| 🟠 | Smart Analysis | Rule-based analysis requiring no LLM |
-
-Even without an API key, HypoLab still performs meaningful statistical analysis.
+# ✨ What It Actually Does
+Table
+Stage	Implementation	Output
+Profile	Auto-detects numeric/categorical/datetime, correlations, outliers, missing data	Structured dataset summary
+Hypothesize	Groq Llama 3.3 → Ollama local → Smart Data-Driven Analysis (zero API cost)	3-5 testable hypotheses with rationale
+Validate	Pearson correlation, ANOVA, Chi-square, T-test, Granger causality, OLS regression	p-values, effect sizes, R²
+Research	arXiv Atom API query built from hypothesis metadata	Supporting papers with abstracts
 
 ---
 
-# 📂 Repository Structure
+### 🧠 The 3-Tier Intelligence Stack
+HypoLab automatically selects the best available backend. No API key required.
+Table
+Tier	Engine	When It Runs
+🟢 Groq	Llama 3.3-70B	GROQ_API_KEY is set
+🟡 Ollama	Llama 3.1-8B	USE_OLLAMA=true (local, free, private)
+🟠 Smart Analysis	Data-driven rule engine	No key, no local model — analyzes your actual correlation matrix and column types to generate intelligent hypotheses
+Even in zero-cost mode, HypoLab analyzes real data patterns — not random templates.
+
+---
+
+## 📂 Repository Structure
 
 ```text
 hypolab/
@@ -133,7 +133,7 @@ hypolab/
 
 ---
 
-# 🚀 Installation
+## 🚀 Quick Start
 
 Clone the repository
 
@@ -175,7 +175,7 @@ pip install -e .
 
 ---
 
-# ▶ Running the App
+### ▶ Running the App
 Run all tests.
 
 ```bash
@@ -190,7 +190,7 @@ streamlit run app.py
 
 ---
 
-# 📊 Example Dataset
+## 📊 Live Demo
 
 Gapminder dataset
 
@@ -207,7 +207,7 @@ Example discoveries:
 
 ---
 
-# 📈 Example Output
+### 📈 Example Output
 
 Generated hypothesis
 
@@ -234,7 +234,7 @@ Supporting literature
 
 ---
 
-# 🧪 Statistical Verification
+## 🧪 How It Works
 
 The LLM **never** decides whether a hypothesis is true.
 
@@ -259,7 +259,7 @@ Each result reports
 
 ---
 
-# 🧪 Ground Truth Testing
+### 🧪 Ground Truth Testing
 
 To validate the pipeline, HypoLab includes a synthetic benchmark dataset.
 
@@ -283,7 +283,7 @@ tests/test_ground_truth.py
 
 ---
 
-# ⚙ Configuration
+## ⚙️ Tech Stack & Configuration
 
 | Environment Variable | Description |
 |----------------------|-------------|
@@ -299,9 +299,7 @@ export SIGNIFICANCE_LEVEL=0.05
 ```
 
 ---
-
-# 📦 Tech Stack
-
+📦 Tech Stack
 - Python
 - Pandas
 - NumPy
@@ -315,7 +313,7 @@ export SIGNIFICANCE_LEVEL=0.05
 
 ---
 
-# 🛣 Roadmap
+## 🛣 Roadmap
 
 - [ ] Multi-agent orchestration
 - [ ] Bayesian hypothesis testing
