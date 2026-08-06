@@ -1,5 +1,11 @@
 # 🧪 HypoLab
 
+<p align="center">
+
+<img src="assets/banner.png" alt="HypoLab Banner" width="100%">
+
+</p>
+
 **LLM proposes. Math verifies.**
 
 An agentic research assistant that combines LLM reasoning with statistical verification, ensuring every accepted insight is supported by evidence—not just AI confidence.
@@ -44,7 +50,7 @@ Current AI data tools give you "insights" that sound convincing but can't be tru
 
 The result is **explainable, falsifiable data analysis** — not AI guesswork.
 
-###
+### ----
 
 ## 🏗 Architecture
 
@@ -155,13 +161,13 @@ python -m venv venv
 
 Activate it
 
-### macOS / Linux
+#### macOS / Linux
 
 ```bash
 source venv/bin/activate
 ```
 
-### Windows
+#### Windows
 
 ```powershell
 venv\Scripts\activate
