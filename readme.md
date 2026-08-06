@@ -2,7 +2,7 @@
 
 <p align="center">
 
-<img src="assets/banner.jpeg" alt="HypoLab Banner" width="100%">
+<img src="assets/banner.png" alt="HypoLab Banner" width="100%">
 
 </p>
 
