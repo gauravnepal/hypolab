@@ -187,30 +187,35 @@ if df is not None:
 
                 with cols[1]:
                     if res.get("status") == "completed":
+                        p_text = f"p={res.get('p_value', 'N/A')}"
+                        if res.get("q_value") is not None:
+                            p_text += f", q={res['q_value']}"
                         if res.get("significant"):
-                            st.success(
-                                f"✅ Significant (p={res.get('p_value', 'N/A')})"
-                            )
+                            st.success(f"✅ Significant ({p_text})")
                         else:
-                            st.error(
-                                f"❌ Not Significant (p={res.get('p_value', 'N/A')})"
-                            )
+                            st.error(f"❌ Not Significant ({p_text})")
 
                         stats_md = []
                         for key in [
                             "pearson_r",
+                            "ci_95",
                             "f_statistic",
+                            "eta_squared",
                             "chi2",
+                            "cramers_v",
                             "t_statistic",
+                            "cohens_d",
                             "r_squared",
                             "best_lag",
                         ]:
-                            if key in res:
+                            if res.get(key) is not None:
                                 stats_md.append(
                                     f"**{key.replace('_', ' ').title()}:** {res[key]}"
                                 )
                         if stats_md:
                             st.markdown(" | ".join(stats_md))
+                        for note in res.get("warnings", []):
+                            st.caption(f"⚠️ {note}")
                     else:
                         st.warning(
                             f"⚠️ {res.get('status', 'Unknown')}: {res.get('reason', '')}"

@@ -27,6 +27,8 @@ class HypoLabConfig:
 
     # Statistical Testing
     significance_level: float = 0.05
+    # "bh" = Benjamini-Hochberg false discovery rate control, "none" = raw p-values
+    multiple_testing_correction: str = "bh"
     max_correlations: int = 50
 
     # Literature Search
@@ -43,6 +45,9 @@ class HypoLabConfig:
         self.significance_level = float(
             os.getenv("SIGNIFICANCE_LEVEL", self.significance_level)
         )
+        self.multiple_testing_correction = os.getenv(
+            "MULTIPLE_TESTING_CORRECTION", self.multiple_testing_correction
+        ).lower()
 
     def has_groq(self) -> bool:
         """Check if Groq API key is available."""

@@ -49,12 +49,19 @@ class HypoLabPipeline:
 
         # Step 3: Statistical testing
         self._log("Running statistical tests...")
-        self.tester = StatisticalTester(self.df, alpha=self.config.significance_level)
+        self.tester = StatisticalTester(
+            self.df,
+            alpha=self.config.significance_level,
+            correction=self.config.multiple_testing_correction,
+        )
         self.test_results = self.tester.run_all(self.hypotheses)
 
         summary = self.tester.get_summary()
         self._log(
-            f"   Completed: {summary['completed']}, Significant: {summary['significant']}"
+            f"   Completed: {summary['completed']}, "
+            f"Significant: {summary['significant']} "
+            f"({summary['significant_uncorrected']} before "
+            f"{summary['correction']} correction)"
         )
 
         # Step 4: Literature search (optional)
@@ -108,18 +115,28 @@ class HypoLabPipeline:
 
             if res.get("status") == "completed":
                 sig = "Significant" if res.get("significant") else "Not Significant"
-                lines.append(f"**Result:** {sig} (p={res.get('p_value', 'N/A')})\n")
+                p_text = f"p={res.get('p_value', 'N/A')}"
+                if res.get("q_value") is not None:
+                    p_text += f", q={res['q_value']}"
+                lines.append(f"**Result:** {sig} ({p_text})\n")
                 for key in [
                     "pearson_r",
+                    "ci_95",
                     "f_statistic",
+                    "eta_squared",
                     "chi2",
+                    "cramers_v",
                     "t_statistic",
+                    "cohens_d",
                     "r_squared",
+                    "best_lag",
                 ]:
-                    if key in res:
+                    if res.get(key) is not None:
                         lines.append(
                             f"- **{key.replace('_', ' ').title()}:** {res[key]}\n"
                         )
+                for note in res.get("warnings", []):
+                    lines.append(f"- ⚠️ {note}\n")
             else:
                 lines.append(
                     f"**Result:** {res.get('status', 'Unknown')} — {res.get('reason', '')}\n"
@@ -137,7 +154,11 @@ class HypoLabPipeline:
         lines.append("## Summary\n")
         lines.append(f"- Total hypotheses: {summary.get('total_hypotheses', 0)}\n")
         lines.append(f"- Completed tests: {summary.get('completed', 0)}\n")
-        lines.append(f"- Significant findings: {summary.get('significant', 0)}\n")
+        lines.append(
+            f"- Significant findings: {summary.get('significant', 0)} "
+            f"(after {summary.get('correction', 'no')} correction; "
+            f"{summary.get('significant_uncorrected', 0)} before)\n"
+        )
         lines.append(
             f"- Skipped: {summary.get('skipped', 0)} | Errors: {summary.get('errors', 0)}\n"
         )
